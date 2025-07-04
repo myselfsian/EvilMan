@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>EvilMan Chat</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-database-compat.js"></script>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+      background: black;
+      color: #00ff00;
+      overflow: hidden;
+    }
+
+    /* Custom Hacker Scrollbar */
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #000;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #00ff00;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #00ff00;
+    }
+
+    #topbar {
+      background: #0a0a0a;
+      color: #00ff00;
+      padding: 15px;
+      font-size: 22px;
+      font-weight: 600;
+      text-align: center;
+      border-bottom: 1px solid #00ff00;
+    }
+    #terminal {
+      position: fixed;
+      top: 50px;
+      left: 0;
+      width: 100vw;
+      height: calc(100vh - 50px);
+      z-index: 0;
+      background: black;
+      color: #00ff00;
+      font-size: 12px;
+      padding: 20px;
+      opacity: 0.08;
+      white-space: pre-wrap;
+      overflow-y: scroll;
+      font-family: 'Share Tech Mono', monospace;
+      pointer-events: none;
+    }
+    #chat-container {
+      position: fixed;
+      top: 50px;
+      bottom: 0;
+      width: 100%;
+      max-width: 700px;
+      height: calc(100vh - 50px);
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 1;
+      padding: 10px;
+    }
+    #messages {
+      flex-grow: 1;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      padding: 10px;
+      padding-right: 10px;
+      margin-bottom: 10px;
+    }
+    .msg {
+      display: inline-block;
+      background-color: #002200;
+      border-radius: 18px;
+      padding: 10px 15px;
+      max-width: 80%;
+      word-wrap: break-word;
+      color: #00ff00;
+      align-self: flex-start;
+      transition: 0.2s;
+    }
+    .msg.you {
+      align-self: flex-end;
+      background-color: #003300;
+      color: #00ff88;
+    }
+    .msg .user-label {
+      font-size: 13px;
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #77ff77;
+    }
+    .reply-info {
+      font-size: 12px;
+      font-style: italic;
+      color: #66ff66;
+      margin-bottom: 6px;
+      padding-left: 5px;
+      border-left: 3px solid #66ff66;
+    }
+    .msg:hover {
+      cursor: pointer;
+      background-color: #004400;
+    }
+    #input-bar {
+      display: flex;
+      gap: 10px;
+      background: #0f0f0f;
+      padding: 10px;
+      border-radius: 25px;
+      align-items: center;
+    }
+    #messageInput {
+      flex-grow: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 20px;
+      background-color: #1a1a1a;
+      color: #00ff00;
+      font-size: 15px;
+    }
+    #sendBtn {
+      background-color: #00ff00;
+      color: black;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+    #nameInputContainer {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 10;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(10px);
+      padding: 35px;
+      border-radius: 24px;
+      box-shadow: 0 0 30px rgba(0, 255, 0, 0.4);
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+    }
+    #nameInput {
+      padding: 15px;
+      border-radius: 12px;
+      border: none;
+      width: 100%;
+      margin-bottom: 20px;
+      font-size: 16px;
+      text-align: center;
+      background: #111;
+      color: #00ff00;
+    }
+    #joinBtn {
+      margin-top: 10px;
+      padding: 12px 25px;
+      border: none;
+      border-radius: 12px;
+      background-color: #00ff00;
+      color: black;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 16px;
+      width: 100%;
+    }
+    #replyBox {
+      font-size: 12px;
+      padding: 5px 10px;
+      margin-bottom: 5px;
+      border-left: 3px solid #00ff00;
+      background: #101010;
+      color: #66ff66;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="topbar">EVILMAN</div>
+  <div id="terminal"></div>
+
+  <div id="nameInputContainer">
+    <input type="text" id="nameInput" placeholder="Enter your name" />
+    <button id="joinBtn">Join Chat</button>
+  </div>
+
+  <div id="chat-container" style="display: none;">
+    <div id="messages"></div>
+    <div id="input-bar">
+      <div id="replyBox"></div>
+      <input type="text" id="messageInput" placeholder="Message..." />
+      <button id="sendBtn">Send</button>
+    </div>
+  </div>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDXLcOAQqjepiypUE_WVxTa7wDP1GkP_Gw",
+      authDomain: "getmyfreechat.firebaseapp.com",
+      projectId: "getmyfreechat",
+      storageBucket: "getmyfreechat.appspot.com",
+      messagingSenderId: "576481960984",
+      appId: "1:576481960984:web:60aa823e73c5ae08604f6d",
+      databaseURL: "https://getmyfreechat-default-rtdb.asia-southeast1.firebasedatabase.app"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+
+    const nameInput = document.getElementById('nameInput');
+    const joinBtn = document.getElementById('joinBtn');
+    const chatContainer = document.getElementById('chat-container');
+    const nameInputContainer = document.getElementById('nameInputContainer');
+    const messageInput = document.getElementById('messageInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const messages = document.getElementById('messages');
+    const terminal = document.getElementById('terminal');
+    const replyBox = document.getElementById('replyBox');
+
+    let userName = '';
+    let replyToMsg = '';
+    let replyToUser = '';
+
+    const terminalLines = [
+      "BruteForce > Attempting login...",
+      "Trying password: root123",
+      "Trying password: admin@123",
+      "[!] Failed: Invalid password",
+      "[#] Injecting payload...",
+      "[+] Response received...",
+      "[*] Downloading data...",
+      "[+] Hash cracked successfully!"
+    ];
+    setInterval(() => {
+      const userFake = ["~sian", "~root", "~admin"][Math.floor(Math.random() * 3)];
+      const line = `> ${terminalLines[Math.floor(Math.random() * terminalLines.length)]} ${userFake}`;
+      terminal.innerText += line + "\n";
+      terminal.scrollTop = terminal.scrollHeight;
+    }, 140);
+
+    joinBtn.onclick = () => {
+      const inputName = nameInput.value.trim();
+      if (inputName !== '') {
+        userName = inputName;
+        nameInputContainer.style.display = 'none';
+        chatContainer.style.display = 'flex';
+
+        db.ref('messages').on('child_added', snap => {
+          const data = snap.val();
+          const msg = document.createElement('div');
+          msg.className = data.name === userName ? 'msg you' : 'msg';
+
+          if (data.replyToMsg && data.replyToUser) {
+            const replyDiv = document.createElement('div');
+            replyDiv.className = 'reply-info';
+            replyDiv.innerText = `Replying to ${data.replyToUser}: "${data.replyToMsg}"`;
+            msg.appendChild(replyDiv);
+          }
+
+          const user = document.createElement('div');
+          user.className = 'user-label';
+          user.innerText = data.name;
+
+          const content = document.createElement('div');
+          content.innerText = data.message;
+
+          msg.appendChild(user);
+          msg.appendChild(content);
+
+          msg.onclick = () => {
+            replyToMsg = data.message;
+            replyToUser = data.name;
+            replyBox.innerText = `Replying to ${replyToUser}: "${replyToMsg}"`;
+            replyBox.style.display = "block";
+          };
+
+          messages.appendChild(msg);
+          messages.scrollTop = messages.scrollHeight;
+        });
+      }
+    };
+
+    sendBtn.onclick = () => {
+      const msg = messageInput.value.trim();
+      if (msg !== '') {
+        db.ref('messages').push({
+          name: userName,
+          message: msg,
+          replyToMsg: replyToMsg || '',
+          replyToUser: replyToUser || ''
+        });
+        messageInput.value = '';
+        replyToMsg = '';
+        replyToUser = '';
+        replyBox.style.display = "none";
+      }
+    };
+
+    messageInput.addEventListener('keypress', e => {
+      if (e.key === 'Enter') sendBtn.click();
+    });
+  </script>
+</body>
+</html>
